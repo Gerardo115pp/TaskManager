@@ -194,7 +194,7 @@ namespace TaskManager
             try
             {  
                 this.cpu_last_increase = this.cpu_counter.NextValue();
-                processor_usage = $"CPU: {this.cpu_last_increase.ToString("0.##")}%";
+
                 process_status = $"Status: {(this.selected_process.Responding ? "Responde" : "No responde")}";
             }
             catch (System.ComponentModel.Win32Exception)
@@ -207,6 +207,7 @@ namespace TaskManager
                 this.selected_process = null;
                 return;
             }
+            processor_usage = $"CPU: {this.cpu_last_increase.ToString("0.##")}%";
             this.current_process_ended.Invoke(new Action(() => this.current_process_ended.Text = process_ended));
             this.current_process_status.Invoke(new Action(() => this.current_process_status.Text = process_status));
             this.current_process_cpu_usage.Invoke(new Action(() => this.current_process_cpu_usage.Text = processor_usage));
