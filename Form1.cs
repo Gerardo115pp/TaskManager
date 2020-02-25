@@ -49,6 +49,8 @@ namespace TaskManager
         [DllImport("kernel32", CharSet = CharSet.Auto, SetLastError = true)]
         static extern bool CloseHandle(IntPtr handle);
 
+        private delegate void ChangeLabelText(Label form_label, string text);
+
         private ulong total_ram = new Microsoft.VisualBasic.Devices.ComputerInfo().TotalPhysicalMemory;
         private Measureables measureing;
         private Bitmap performace_graphic;
@@ -60,6 +62,7 @@ namespace TaskManager
         private PerformanceCounter iow_counter; //input output write
         private float cpu_last_increase;
         private int max_height;
+        private ChangeLabelText changeLabelText;
 
         public Form1()
         {
@@ -73,10 +76,11 @@ namespace TaskManager
             this.process_Info_updater = new System.Timers.Timer(500);
             this.process_Info_updater.Elapsed += updateProcesses;
             this.process_Info_updater.AutoReset = true;
-            this.process_Info_updater.Start();
             this.measureChange += () => this.resetGraphic(this.getMeasurableName());
             this.measureChange();
             this.total_ram_label.Text = $"RAM total: {this.total_ram / (1024 * 1024)} MB";
+            this.changeLabelText = new ChangeLabelText(this.setLabelText);
+            this.process_Info_updater.Start();
         }
 
         #region <Performance Graphic>
@@ -92,12 +96,14 @@ namespace TaskManager
 
         private int getPointToDraw()
         {
+            string return_value_string;
             float return_value=0;
             if(this.measureing == Measureables.RAM)
             {
                 float process_increase_percentage = (float)this.selected_process.WorkingSet64 / (float)this.total_ram;
                 return_value = (this.performace_graphic.Height * process_increase_percentage);
-                this.current_graphic_name.Invoke(new Action(() => this.current_graphic_name.Text = $"{this.getMeasurableName() + return_value}%"));
+                return_value_string = return_value.ToString("0.##");
+                this.current_graphic_name.Invoke(new Action(() => this.current_graphic_name.Text = $"{this.getMeasurableName() + return_value_string}%"));
                 return_value = this.max_height - (return_value+18);
                 //MessageBox.Show($"{this.selected_process.WorkingSet64} / { this.selected_process.PrivateMemorySize64 } = {process_increase_percentage.ToString("0.##")}");
             }
@@ -183,19 +189,23 @@ namespace TaskManager
             {
                 process_ended = "Esta activo: Inactivo";
             }
-
             this.current_process_memory_use.Invoke(new Action(() => this.current_process_memory_use.Text = $"Memoria Usada: {(this.selected_process.WorkingSet64 / (1024*1024))} MB"));
             this.current_process_id.Invoke(new Action(() => this.current_process_id.Text = $"PID: {(this.selected_process.Id)}"));
-            this.cpu_last_increase = this.cpu_counter.NextValue();
-            processor_usage = $"CPU: {this.cpu_last_increase.ToString("0.##")}%";
             try
-            {
+            {  
+                this.cpu_last_increase = this.cpu_counter.NextValue();
+                processor_usage = $"CPU: {this.cpu_last_increase.ToString("0.##")}%";
                 process_status = $"Status: {(this.selected_process.Responding ? "Responde" : "No responde")}";
             }
             catch (System.ComponentModel.Win32Exception)
             {
-                process_status = "Acceso denegado";
-                process_ended = "Acceso denegado";
+                process_status = "Status: Acceso denegado";
+                process_ended = "Esta activo: Acceso denegado";
+            }
+            catch (System.InvalidOperationException)
+            {
+                this.selected_process = null;
+                return;
             }
             this.current_process_ended.Invoke(new Action(() => this.current_process_ended.Text = process_ended));
             this.current_process_status.Invoke(new Action(() => this.current_process_status.Text = process_status));
@@ -211,6 +221,12 @@ namespace TaskManager
         #endregion </Timer Functions>
 
         #region <Process Info Setters>
+
+
+        private void setLabelText(Label label, string text)
+        {
+            label.Text = text;
+        }
 
         private void setProcessListToListBox()
         {
@@ -238,8 +254,8 @@ namespace TaskManager
             }
             catch(System.ComponentModel.Win32Exception)
             {
-                process_status = "Acceso denegado";
-                process_ended = "Acceso denegado";
+                process_status = "Status: Acceso denegado";
+                process_ended = "Esta activo: Acceso denegado";
             }
             this.current_process_ended.Text = process_ended;
             this.current_process_status.Text = process_status;
@@ -311,45 +327,36 @@ namespace TaskManager
 
         private static void SuspendProcess(int pid)
         {
-            var process = Process.GetProcessById(pid);
-
+            Process process = Process.GetProcessById(pid);
             foreach (ProcessThread pT in process.Threads)
             {
                 IntPtr pOpenThread = OpenThread(ThreadAccess.SUSPEND_RESUME, false, (uint)pT.Id);
-
                 if (pOpenThread == IntPtr.Zero)
                 {
                     continue;
                 }
-
                 SuspendThread(pOpenThread);
-
                 CloseHandle(pOpenThread);
             }
         }
 
         public static void ResumeProcess(int pid)
         {
-            var process = Process.GetProcessById(pid);
-
+            Process process = Process.GetProcessById(pid);
             if (process.ProcessName == string.Empty)
                 return;
-
             foreach (ProcessThread pT in process.Threads)
             {
                 IntPtr pOpenThread = OpenThread(ThreadAccess.SUSPEND_RESUME, false, (uint)pT.Id);
-
                 if (pOpenThread == IntPtr.Zero)
                 {
                     continue;
                 }
-
                 var suspendCount = 0;
                 do
                 {
                     suspendCount = ResumeThread(pOpenThread);
                 } while (suspendCount > 0);
-
                 CloseHandle(pOpenThread);
             }
         }
@@ -370,8 +377,22 @@ namespace TaskManager
 
         private void terminarToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.selected_process.Kill();
-            this.selected_process = null;
+            if (this.selected_process != null)
+            {
+                string process_name = this.selected_process.ProcessName;
+                foreach(Process p in Process.GetProcessesByName(process_name))
+                {
+                    p.CloseMainWindow();
+                    p.Close();
+                }
+                this.selected_process = null;
+                this.current_process_status.Invoke(this.changeLabelText, this.current_process_status, "Status: proceso terminado");
+                this.current_process_ended.Invoke(this.changeLabelText, this.current_process_ended, "Esta activo: Inactivo");
+            }
+            else
+            {
+                MessageBox.Show("Seleccione un proceso no sea imbecil");
+            }
         }
 
 
