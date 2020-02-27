@@ -36,9 +36,19 @@ namespace TaskManager
 
 
 
-    public partial class Form1 : Form
+    public partial class TaskManagerForm : Form
     {
-        public static List<Process> processes;
+        public static Dictionary<int,WinTask> processes;
+
+        public static Dictionary<int,WinTask> GetProcesess()
+        {
+            Dictionary<int, WinTask> all_processes = new Dictionary<int, WinTask>();
+            foreach(Process p in Process.GetProcesses())
+            {
+                all_processes[p.Id] = new WinTask(p);
+            }
+            return all_processes;
+        }
 
         [DllImport("kernel32.dll")]
         static extern IntPtr OpenThread(ThreadAccess dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
@@ -55,19 +65,17 @@ namespace TaskManager
         private Measureables measureing;
         private Bitmap performace_graphic;
         private List<int> performace_data;
-        private Process selected_process;
+        private WinTask selected_process;
         private System.Timers.Timer process_Info_updater;
-        private PerformanceCounter cpu_counter;
-        private PerformanceCounter ior_counter; //input output read
-        private PerformanceCounter iow_counter; //input output write
-        private float cpu_last_increase;
         private int max_height;
         private ChangeLabelText changeLabelText;
+        private Dictionary<int, WinTask> stopped_process;
+        //private HashSet<IntPtr> 
 
-        public Form1()
+        public TaskManagerForm()
         {
             InitializeComponent();
-            Form1.processes = Process.GetProcesses().ToList();
+            TaskManagerForm.processes = TaskManagerForm.GetProcesess();
             this.setProcessListToListBox();
             this.measureing = Measureables.CPU;
             this.max_height = 128;
@@ -80,8 +88,27 @@ namespace TaskManager
             this.measureChange();
             this.total_ram_label.Text = $"RAM total: {this.total_ram / (1024 * 1024)} MB";
             this.changeLabelText = new ChangeLabelText(this.setLabelText);
+            this.stopped_process = new Dictionary<int, WinTask>();
             this.process_Info_updater.Start();
         }
+
+        #region <Label functions>
+
+        private string counterValueInerpreter(float counter_value)
+        {
+            string response = "default";
+            if(counter_value >= 0f)
+            {
+                response = counter_value.ToString("0.##");
+            }
+            else if(counter_value == -1)
+            {
+                response = "Acceso denegado";
+            }
+            return response;
+        }
+
+        #endregion </Label functions>
 
         #region <Performance Graphic>
 
@@ -91,7 +118,7 @@ namespace TaskManager
             this.performace_graphic = new Bitmap(250, this.max_height);
             this.PerformancePB.Image = (Image)this.performace_graphic;
             this.performace_data.Clear();
-            this.performace_data.Add(this.measureing == Measureables.RAM ? this.max_height-18 : this.max_height/2);
+            this.performace_data.Add(this.max_height - 18);
         }
 
         private int getPointToDraw()
@@ -100,7 +127,7 @@ namespace TaskManager
             float return_value=0;
             if(this.measureing == Measureables.RAM)
             {
-                float process_increase_percentage = (float)this.selected_process.WorkingSet64 / (float)this.total_ram;
+                float process_increase_percentage = (float)this.selected_process.WorkingPhysicalMemory / (float)this.total_ram;
                 return_value = (this.performace_graphic.Height * process_increase_percentage);
                 return_value_string = return_value.ToString("0.##");
                 this.current_graphic_name.Invoke(new Action(() => this.current_graphic_name.Text = $"{this.getMeasurableName() + return_value_string}%"));
@@ -109,8 +136,9 @@ namespace TaskManager
             }
             else if(this.measureing == Measureables.CPU)
             {
-                return_value = (this.performace_graphic.Height / 2) - Convert.ToInt32((this.cpu_last_increase/100) * this.performace_graphic.Height);
-                this.current_graphic_name.Invoke(new Action(() => this.current_graphic_name.Text = $"{this.getMeasurableName()+(Convert.ToInt32((this.cpu_last_increase / 100) * this.max_height))}%"));
+                float last_cpu_measuer = (float)this.selected_process.LastMeasuerdCPUValue;
+                return_value = (this.performace_graphic.Height - 18) - Convert.ToInt32((last_cpu_measuer/100) * this.performace_graphic.Height);
+                this.current_graphic_name.Invoke(new Action(() => this.current_graphic_name.Text = $"{this.getMeasurableName()+(Convert.ToInt32((last_cpu_measuer / 100) * this.max_height))}%"));
             }
             return Convert.ToInt32(return_value);
         }
@@ -158,71 +186,73 @@ namespace TaskManager
         
         private void updateProcessesListBox()
         {
-            Form1.processes = Process.GetProcesses().ToList();
-            Form1.processes.Sort((Process a, Process b) => string.Compare(a.ProcessName, b.ProcessName));
+            List<Process> current_processes =Process.GetProcesses().ToList();
+            current_processes.Sort((Process a, Process b) => string.Compare(a.ProcessName, b.ProcessName));
+            List<string> process_names = new List<string>();
             this.ProcessList.Invoke(new Action(() =>
             {
-                for(int h=0; h<Form1.processes.Count; h++)
+                for(int h=0; h<current_processes.Count; h++)
                 {
-                     if(h < this.ProcessList.Items.Count)
+                    if(this.stopped_process.ContainsKey(current_processes[h].Id))
                     {
-                        this.ProcessList.Items[h] = Form1.processes[h].ProcessName;
+                        continue;
+                    }
+
+                    if(TaskManagerForm.processes.ContainsKey(current_processes[h].Id))
+                    {
+                        //the process already existed
+                        if (TaskManagerForm.processes[current_processes[h].Id].Status == PROCESS_STATUS.Terminated)
+                        {
+                            this.stopped_process[current_processes[h].Id] = TaskManagerForm.processes[current_processes[h].Id];
+                            this.stoppedProcess.Items.Add($"{current_processes[h].Id}: {this.stopped_process[current_processes[h].Id].Name}");
+                            continue;
+                        }
                     }
                     else
                     {
-                        this.ProcessList.Items.Add(Form1.processes[h].ProcessName);
+                        //the process is new
+                        WinTask winTask = new WinTask(current_processes[h]);
+                        TaskManagerForm.processes[winTask.PID] = winTask;
                     }
+                    this.ProcessList.Items.Add($"{current_processes[h].Id}: {current_processes[h].ProcessName}");
                 }
             }));
-        }
-
-        private void updateCurrentProcessInfo()
-        {
-            int selected_process_pid = this.selected_process.Id;
-            string process_ended = this.current_process_ended.Text,
-                     process_status, processor_usage;
-            try
-            {
-                this.selected_process = Process.GetProcessById(selected_process_pid);
-            }
-            catch(System.ArgumentException)
-            {
-                process_ended = "Esta activo: Inactivo";
-            }
-            this.current_process_memory_use.Invoke(new Action(() => this.current_process_memory_use.Text = $"Memoria Usada: {(this.selected_process.WorkingSet64 / (1024*1024))} MB"));
-            this.current_process_id.Invoke(new Action(() => this.current_process_id.Text = $"PID: {(this.selected_process.Id)}"));
-            try
-            {  
-                this.cpu_last_increase = this.cpu_counter.NextValue();
-
-                process_status = $"Status: {(this.selected_process.Responding ? "Responde" : "No responde")}";
-            }
-            catch (System.ComponentModel.Win32Exception)
-            {
-                process_status = "Status: Acceso denegado";
-                process_ended = "Esta activo: Acceso denegado";
-            }
-            catch (System.InvalidOperationException)
-            {
-                this.selected_process = null;
-                return;
-            }
-            processor_usage = $"CPU: {this.cpu_last_increase.ToString("0.##")}%";
-            this.current_process_ended.Invoke(new Action(() => this.current_process_ended.Text = process_ended));
-            this.current_process_status.Invoke(new Action(() => this.current_process_status.Text = process_status));
-            this.current_process_cpu_usage.Invoke(new Action(() => this.current_process_cpu_usage.Text = processor_usage));
-            this.current_process_hddread.Invoke(new Action(() => this.current_process_hddread.Text = $"Operaciones de escritura: {this.ior_counter.NextValue().ToString("0.##")}"));
-            this.current_process_hddwrite.Invoke(new Action(() => this.current_process_hddwrite.Text = $"Operaciones de lectura: {this.iow_counter.NextValue().ToString("0.##")}"));
-
-
-            //Setting the point to draw
-            this.drawInPerformance();
         }
 
         #endregion </Timer Functions>
 
         #region <Process Info Setters>
 
+        private void updateCurrentProcessInfo()
+        {
+            string memory_label_text = this.selected_process.UsedRAMMb,
+                     pid_label_text = $"PID: {(this.selected_process.PID)}",
+                     status_label_text = $"Status: {this.selected_process.StatusText}",
+                     cpu_label_text = $"CPU: {this.selected_process.NextCPUValue}%",
+                     reads_label_text = $"Operaciones de escritura: {this.counterValueInerpreter(this.selected_process.NextIOreadValue)}",
+                     writes_label_text = $"Operaciones de lectura: {this.counterValueInerpreter(this.selected_process.NextIOwriteValue)}";
+            if (current_process_cpu_usage.InvokeRequired)
+            {
+                this.current_process_memory_use.Invoke(this.changeLabelText, this.current_process_memory_use, memory_label_text);
+                this.current_process_id.Invoke(this.changeLabelText, this.current_process_id, pid_label_text);
+                this.current_process_status.Invoke(this.changeLabelText, this.current_process_status, status_label_text);
+                this.current_process_cpu_usage.Invoke(this.changeLabelText, this.current_process_cpu_usage, cpu_label_text);
+                this.current_process_hddread.Invoke(this.changeLabelText, this.current_process_hddread, reads_label_text);
+                this.current_process_hddwrite.Invoke(this.changeLabelText, this.current_process_hddwrite, writes_label_text);
+            }
+            else
+            {
+                this.current_process_memory_use.Text = memory_label_text;
+                this.current_process_id.Text = pid_label_text;
+                this.current_process_status.Text = status_label_text;
+                this.current_process_cpu_usage.Text = cpu_label_text;
+                this.current_process_hddread.Text = reads_label_text;
+                this.current_process_hddwrite.Text = writes_label_text;
+            }
+
+            //Setting the point to draw
+            this.drawInPerformance();
+        }
 
         private void setLabelText(Label label, string text)
         {
@@ -231,42 +261,17 @@ namespace TaskManager
 
         private void setProcessListToListBox()
         {
-            Form1.processes.Sort((Process a, Process b) => string.Compare(a.ProcessName, b.ProcessName));
-            Form1.processes.ForEach(p => this.ProcessList.Items.Add(p.ProcessName));
-        }
-
-        private void SetProcessInfo()
-        {
-            this.resetGraphic(this.getMeasurableName());
-            string process_ended, process_status, processor_usage;
-            this.current_process_name.Text = this.selected_process.ProcessName;
-            this.current_process_memory_use.Text = $"Memoria Usada: {(this.selected_process.WorkingSet64  / (1024 * 1024))} MB";
-            this.current_process_id.Text = $"PID: {(this.selected_process.Id)}";
-            this.cpu_counter = new PerformanceCounter("Proceso", "% de tiempo de procesador", this.selected_process.ProcessName);
-            this.ior_counter = new PerformanceCounter("Proceso", "Operaciones de ES de lectura/s", this.selected_process.ProcessName);
-            this.iow_counter = new PerformanceCounter("Proceso", "Operaciones de ES de escritura/s", this.selected_process.ProcessName);
-            processor_usage = $"CPU: {this.cpu_counter.NextValue()}%";
-            this.ior_counter.NextValue();
-            this.iow_counter.NextValue();
-            try
-            {
-                process_ended = $"Esta activo: {(!this.selected_process.HasExited ? "Activo" : "Inactivo")}";
-                process_status = $"Status: {(this.selected_process.Responding ? "Responde" : "No responde")}";
-            }
-            catch(System.ComponentModel.Win32Exception)
-            {
-                process_status = "Status: Acceso denegado";
-                process_ended = "Esta activo: Acceso denegado";
-            }
-            this.current_process_ended.Text = process_ended;
-            this.current_process_status.Text = process_status;
-            this.current_process_cpu_usage.Text = processor_usage;
+            List<WinTask> current_processes = TaskManagerForm.processes.Values.ToList();
+            current_processes.Sort((WinTask a, WinTask b) => string.Compare(a.Name, b.Name));
+            current_processes.ForEach(p => this.ProcessList.Items.Add(p.Name));
         }
 
         private void ProcessList_Click(object sender, EventArgs e)
         {
-            this.selected_process = Form1.processes[this.ProcessList.SelectedIndex];
-            this.SetProcessInfo();
+            string string_pid = (string)this.ProcessList.SelectedItem;
+            string_pid = string_pid.Split(':')[0];
+            this.selected_process = TaskManagerForm.processes[Convert.ToInt32(string_pid)];
+            this.updateCurrentProcessInfo();
         }
         #endregion </Process Info Setters>
 
@@ -281,8 +286,9 @@ namespace TaskManager
             startInfo.WorkingDirectory = "D:\\ElMar\\Documents\\SoftwareProjects\\Respaldos\\";
             process.StartInfo = startInfo;
             process.Start();
-            this.selected_process = process;
-            this.SetProcessInfo();
+            this.selected_process = new WinTask(process);
+            TaskManagerForm.processes[process.Id] = this.selected_process;
+            this.updateCurrentProcessInfo();
         }
         #endregion </Process creator>
 
@@ -368,31 +374,31 @@ namespace TaskManager
 
         private void detenerToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Form1.SuspendProcess(this.selected_process.Id);
+            TaskManagerForm.SuspendProcess(this.selected_process.PID);
         }
 
         private void resumirToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Form1.ResumeProcess(this.selected_process.Id);
+            TaskManagerForm.ResumeProcess(this.selected_process.PID);
         }
 
         private void terminarToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (this.selected_process != null)
             {
-                string process_name = this.selected_process.ProcessName;
+                string process_name = this.selected_process.RealName;
                 foreach(Process p in Process.GetProcessesByName(process_name))
                 {
+                    this.stopped_process[p.Id] = this.selected_process;
                     p.CloseMainWindow();
                     p.Close();
                 }
                 this.selected_process = null;
                 this.current_process_status.Invoke(this.changeLabelText, this.current_process_status, "Status: proceso terminado");
-                this.current_process_ended.Invoke(this.changeLabelText, this.current_process_ended, "Esta activo: Inactivo");
             }
             else
             {
-                MessageBox.Show("Seleccione un proceso no sea imbecil");
+                MessageBox.Show("Seleccione un proceso no sea especialito :3");
             }
         }
 

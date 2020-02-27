@@ -1,6 +1,6 @@
 ﻿namespace TaskManager
 {
-    partial class Form1
+    partial class TaskManagerForm
     {
         /// <summary>
         /// Variable del diseñador necesaria.
@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TaskManagerForm));
             this.ProcessList = new System.Windows.Forms.ListBox();
             this.ProcessInfoBar = new System.Windows.Forms.StatusStrip();
             this.current_process_name = new System.Windows.Forms.ToolStripStatusLabel();
@@ -43,12 +43,12 @@
             this.current_process_hddwrite = new System.Windows.Forms.Label();
             this.current_process_cpu_usage = new System.Windows.Forms.Label();
             this.current_process_status = new System.Windows.Forms.Label();
-            this.current_process_ended = new System.Windows.Forms.Label();
             this.current_process_id = new System.Windows.Forms.Label();
             this.current_process_memory_use = new System.Windows.Forms.Label();
             this.create_process_btn = new System.Windows.Forms.Label();
             this.PerformancePB = new System.Windows.Forms.PictureBox();
             this.current_graphic_name = new System.Windows.Forms.Label();
+            this.stoppedProcess = new System.Windows.Forms.ListBox();
             this.ProcessInfoBar.SuspendLayout();
             this.Process_Info_Group.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.PerformancePB)).BeginInit();
@@ -60,7 +60,7 @@
             this.ProcessList.ItemHeight = 16;
             this.ProcessList.Location = new System.Drawing.Point(579, 222);
             this.ProcessList.Name = "ProcessList";
-            this.ProcessList.Size = new System.Drawing.Size(333, 324);
+            this.ProcessList.Size = new System.Drawing.Size(333, 228);
             this.ProcessList.TabIndex = 0;
             this.ProcessList.Click += new System.EventHandler(this.ProcessList_Click);
             // 
@@ -142,12 +142,11 @@
             this.Process_Info_Group.Controls.Add(this.current_process_hddwrite);
             this.Process_Info_Group.Controls.Add(this.current_process_cpu_usage);
             this.Process_Info_Group.Controls.Add(this.current_process_status);
-            this.Process_Info_Group.Controls.Add(this.current_process_ended);
             this.Process_Info_Group.Controls.Add(this.current_process_id);
             this.Process_Info_Group.Controls.Add(this.current_process_memory_use);
             this.Process_Info_Group.Location = new System.Drawing.Point(84, 30);
             this.Process_Info_Group.Name = "Process_Info_Group";
-            this.Process_Info_Group.Size = new System.Drawing.Size(351, 262);
+            this.Process_Info_Group.Size = new System.Drawing.Size(351, 227);
             this.Process_Info_Group.TabIndex = 2;
             this.Process_Info_Group.TabStop = false;
             this.Process_Info_Group.Text = "Infromacion";
@@ -156,7 +155,7 @@
             // 
             this.current_process_hddread.AutoSize = true;
             this.current_process_hddread.Font = new System.Drawing.Font("Tahoma", 7.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.current_process_hddread.Location = new System.Drawing.Point(34, 196);
+            this.current_process_hddread.Location = new System.Drawing.Point(34, 163);
             this.current_process_hddread.Name = "current_process_hddread";
             this.current_process_hddread.Size = new System.Drawing.Size(183, 17);
             this.current_process_hddread.TabIndex = 6;
@@ -166,7 +165,7 @@
             // 
             this.current_process_hddwrite.AutoSize = true;
             this.current_process_hddwrite.Font = new System.Drawing.Font("Tahoma", 7.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.current_process_hddwrite.Location = new System.Drawing.Point(34, 225);
+            this.current_process_hddwrite.Location = new System.Drawing.Point(34, 192);
             this.current_process_hddwrite.Name = "current_process_hddwrite";
             this.current_process_hddwrite.Size = new System.Drawing.Size(170, 17);
             this.current_process_hddwrite.TabIndex = 5;
@@ -187,21 +186,11 @@
             // 
             this.current_process_status.AutoSize = true;
             this.current_process_status.Font = new System.Drawing.Font("Tahoma", 7.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.current_process_status.Location = new System.Drawing.Point(34, 167);
+            this.current_process_status.Location = new System.Drawing.Point(34, 134);
             this.current_process_status.Name = "current_process_status";
             this.current_process_status.Size = new System.Drawing.Size(62, 17);
             this.current_process_status.TabIndex = 3;
             this.current_process_status.Text = "Status: ";
-            // 
-            // current_process_ended
-            // 
-            this.current_process_ended.AutoSize = true;
-            this.current_process_ended.Font = new System.Drawing.Font("Tahoma", 7.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.current_process_ended.Location = new System.Drawing.Point(34, 137);
-            this.current_process_ended.Name = "current_process_ended";
-            this.current_process_ended.Size = new System.Drawing.Size(92, 17);
-            this.current_process_ended.TabIndex = 2;
-            this.current_process_ended.Text = "Esta activo: ";
             // 
             // current_process_id
             // 
@@ -262,18 +251,28 @@
             this.current_graphic_name.TabIndex = 7;
             this.current_graphic_name.Text = "Memoria Usada: ";
             // 
-            // Form1
+            // stoppedProcess
+            // 
+            this.stoppedProcess.FormattingEnabled = true;
+            this.stoppedProcess.ItemHeight = 16;
+            this.stoppedProcess.Location = new System.Drawing.Point(579, 470);
+            this.stoppedProcess.Name = "stoppedProcess";
+            this.stoppedProcess.Size = new System.Drawing.Size(333, 116);
+            this.stoppedProcess.TabIndex = 8;
+            // 
+            // TaskManagerForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(938, 615);
+            this.Controls.Add(this.stoppedProcess);
             this.Controls.Add(this.current_graphic_name);
             this.Controls.Add(this.PerformancePB);
             this.Controls.Add(this.create_process_btn);
             this.Controls.Add(this.Process_Info_Group);
             this.Controls.Add(this.ProcessInfoBar);
             this.Controls.Add(this.ProcessList);
-            this.Name = "Form1";
+            this.Name = "TaskManagerForm";
             this.Text = "Form1";
             this.ProcessInfoBar.ResumeLayout(false);
             this.ProcessInfoBar.PerformLayout();
@@ -294,7 +293,6 @@
         private System.Windows.Forms.GroupBox Process_Info_Group;
         private System.Windows.Forms.Label current_process_memory_use;
         private System.Windows.Forms.Label current_process_id;
-        private System.Windows.Forms.Label current_process_ended;
         private System.Windows.Forms.Label current_process_status;
         private System.Windows.Forms.Label create_process_btn;
         private System.Windows.Forms.Label current_process_cpu_usage;
@@ -307,6 +305,7 @@
         private System.Windows.Forms.ToolStripMenuItem resumirToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem terminarToolStripMenuItem;
         private System.Windows.Forms.ToolStripStatusLabel total_ram_label;
+        private System.Windows.Forms.ListBox stoppedProcess;
     }
 }
 
