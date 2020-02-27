@@ -45,17 +45,24 @@ namespace TaskManager
 
         public string UsedRAMMb
         {
-            get { return $"{(this.process_instance.WorkingSet64 / (1024 * 1024))} MB"; }
+            get {
+                long mb = 0;
+                if(this.status != PROCESS_STATUS.Terminated)
+                {
+                    mb = (this.process_instance.WorkingSet64 / (1024 * 1024));
+                }
+                return $"{mb} MB"; 
+            }
         }
 
-        public float? LastMeasuerdCPUValue
+        public float LastMeasuerdCPUValue
         {
             get { 
                 if (this.cpu_last_increase != default(float))
                 {
                     return this.cpu_last_increase; 
                 }
-                return null;
+                return 0f;
             }
         }
 

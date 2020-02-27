@@ -49,6 +49,7 @@
             this.PerformancePB = new System.Windows.Forms.PictureBox();
             this.current_graphic_name = new System.Windows.Forms.Label();
             this.stoppedProcess = new System.Windows.Forms.ListBox();
+            this.label1 = new System.Windows.Forms.Label();
             this.ProcessInfoBar.SuspendLayout();
             this.Process_Info_Group.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.PerformancePB)).BeginInit();
@@ -58,7 +59,7 @@
             // 
             this.ProcessList.FormattingEnabled = true;
             this.ProcessList.ItemHeight = 16;
-            this.ProcessList.Location = new System.Drawing.Point(579, 222);
+            this.ProcessList.Location = new System.Drawing.Point(579, 212);
             this.ProcessList.Name = "ProcessList";
             this.ProcessList.Size = new System.Drawing.Size(333, 228);
             this.ProcessList.TabIndex = 0;
@@ -138,6 +139,7 @@
             // 
             // Process_Info_Group
             // 
+            this.Process_Info_Group.BackColor = System.Drawing.SystemColors.Control;
             this.Process_Info_Group.Controls.Add(this.current_process_hddread);
             this.Process_Info_Group.Controls.Add(this.current_process_hddwrite);
             this.Process_Info_Group.Controls.Add(this.current_process_cpu_usage);
@@ -255,16 +257,26 @@
             // 
             this.stoppedProcess.FormattingEnabled = true;
             this.stoppedProcess.ItemHeight = 16;
-            this.stoppedProcess.Location = new System.Drawing.Point(579, 470);
+            this.stoppedProcess.Location = new System.Drawing.Point(579, 454);
             this.stoppedProcess.Name = "stoppedProcess";
-            this.stoppedProcess.Size = new System.Drawing.Size(333, 116);
+            this.stoppedProcess.Size = new System.Drawing.Size(333, 132);
             this.stoppedProcess.TabIndex = 8;
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(594, 443);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(79, 17);
+            this.label1.TabIndex = 9;
+            this.label1.Text = "Finalizados";
             // 
             // TaskManagerForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(938, 615);
+            this.Controls.Add(this.label1);
             this.Controls.Add(this.stoppedProcess);
             this.Controls.Add(this.current_graphic_name);
             this.Controls.Add(this.PerformancePB);
@@ -306,6 +318,7 @@
         private System.Windows.Forms.ToolStripMenuItem terminarToolStripMenuItem;
         private System.Windows.Forms.ToolStripStatusLabel total_ram_label;
         private System.Windows.Forms.ListBox stoppedProcess;
+        private System.Windows.Forms.Label label1;
     }
 }
 

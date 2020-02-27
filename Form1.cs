@@ -60,6 +60,7 @@ namespace TaskManager
         static extern bool CloseHandle(IntPtr handle);
 
         private delegate void ChangeLabelText(Label form_label, string text);
+        private delegate void AlterListBox(ListBox listBox, string thing);
 
         private ulong total_ram = new Microsoft.VisualBasic.Devices.ComputerInfo().TotalPhysicalMemory;
         private Measureables measureing;
@@ -69,6 +70,8 @@ namespace TaskManager
         private System.Timers.Timer process_Info_updater;
         private int max_height;
         private ChangeLabelText changeLabelText;
+        private AlterListBox addToListBox;
+        private AlterListBox removeFromListBox;
         private Dictionary<int, WinTask> stopped_process;
         //private HashSet<IntPtr> 
 
@@ -88,6 +91,8 @@ namespace TaskManager
             this.measureChange();
             this.total_ram_label.Text = $"RAM total: {this.total_ram / (1024 * 1024)} MB";
             this.changeLabelText = new ChangeLabelText(this.setLabelText);
+            this.addToListBox = new AlterListBox(this.addtoListBox);
+            this.removeFromListBox = new AlterListBox(this.removefromListBox);
             this.stopped_process = new Dictionary<int, WinTask>();
             this.process_Info_updater.Start();
         }
@@ -188,35 +193,32 @@ namespace TaskManager
         {
             List<Process> current_processes =Process.GetProcesses().ToList();
             current_processes.Sort((Process a, Process b) => string.Compare(a.ProcessName, b.ProcessName));
-            List<string> process_names = new List<string>();
-            this.ProcessList.Invoke(new Action(() =>
+            for (int h = 0; h <current_processes.Count ; h++)
             {
-                for(int h=0; h<current_processes.Count; h++)
+                if (this.stopped_process.ContainsKey(current_processes[h].Id))
                 {
-                    if(this.stopped_process.ContainsKey(current_processes[h].Id))
+                    continue;
+                }
+
+                if (TaskManagerForm.processes.ContainsKey(current_processes[h].Id))
+                {
+                    //the process already existed
+                    if (TaskManagerForm.processes[current_processes[h].Id].Status == PROCESS_STATUS.Terminated)
                     {
+                        this.stopped_process[current_processes[h].Id] = TaskManagerForm.processes[current_processes[h].Id];
+                        this.stoppedProcess.Invoke(new Action(() => this.stoppedProcess.Items.Add($"{current_processes[h].Id}: {this.stopped_process[current_processes[h].Id].Name}")));
+                        this.ProcessList.Invoke(this.removeFromListBox, this.ProcessList, $"{current_processes[h].Id}: {this.stopped_process[current_processes[h].Id].Name}");
                         continue;
                     }
-
-                    if(TaskManagerForm.processes.ContainsKey(current_processes[h].Id))
-                    {
-                        //the process already existed
-                        if (TaskManagerForm.processes[current_processes[h].Id].Status == PROCESS_STATUS.Terminated)
-                        {
-                            this.stopped_process[current_processes[h].Id] = TaskManagerForm.processes[current_processes[h].Id];
-                            this.stoppedProcess.Items.Add($"{current_processes[h].Id}: {this.stopped_process[current_processes[h].Id].Name}");
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        //the process is new
-                        WinTask winTask = new WinTask(current_processes[h]);
-                        TaskManagerForm.processes[winTask.PID] = winTask;
-                    }
-                    this.ProcessList.Items.Add($"{current_processes[h].Id}: {current_processes[h].ProcessName}");
                 }
-            }));
+                else
+                {
+                    //the process is new
+                    WinTask winTask = new WinTask(current_processes[h]);
+                    TaskManagerForm.processes[winTask.PID] = winTask;
+                    this.ProcessList.Invoke(this.addToListBox, this.ProcessList, $"{current_processes[h].Id}: {current_processes[h].ProcessName}");
+                }
+            }
         }
 
         #endregion </Timer Functions>
@@ -242,16 +244,29 @@ namespace TaskManager
             }
             else
             {
+                this.current_process_name.Text = this.selected_process.Name;
                 this.current_process_memory_use.Text = memory_label_text;
                 this.current_process_id.Text = pid_label_text;
                 this.current_process_status.Text = status_label_text;
                 this.current_process_cpu_usage.Text = cpu_label_text;
                 this.current_process_hddread.Text = reads_label_text;
                 this.current_process_hddwrite.Text = writes_label_text;
+                this.resetGraphic(this.getMeasurableName());
             }
 
             //Setting the point to draw
             this.drawInPerformance();
+        }
+
+        private void addtoListBox(ListBox listBox, string thing)
+        {
+            listBox.Items.Add(thing);
+        }
+
+        private void removefromListBox(ListBox listBox, string thing)
+        {
+            listBox.Items.Remove(thing);
+
         }
 
         private void setLabelText(Label label, string text)
@@ -263,7 +278,7 @@ namespace TaskManager
         {
             List<WinTask> current_processes = TaskManagerForm.processes.Values.ToList();
             current_processes.Sort((WinTask a, WinTask b) => string.Compare(a.Name, b.Name));
-            current_processes.ForEach(p => this.ProcessList.Items.Add(p.Name));
+            current_processes.ForEach(p => this.ProcessList.Items.Add($"{p.PID}: {p.Name}"));
         }
 
         private void ProcessList_Click(object sender, EventArgs e)
@@ -293,6 +308,11 @@ namespace TaskManager
         #endregion </Process creator>
 
         #region <Misc>
+
+        private int getPIDFromListBoxName(string name)
+        {
+            return Convert.ToInt32(name.Split(':')[0]);
+        }
 
         private void CountersBTN_ButtonClick(object sender, EventArgs e)
         {
